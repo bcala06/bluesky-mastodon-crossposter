@@ -1,0 +1,7 @@
+com\crossposter\controllers\MastodonController.class
+com\crossposter\controllers\CreatePostController.class
+com\crossposter\controllers\SettingsController.class
+com\crossposter\controllers\HomeController.class
+com\crossposter\controllers\SceneManager.class
+com\crossposter\Main.class
+com\crossposter\controllers\BlueskyController.class

@@ -1,0 +1,10 @@
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.crossposter.controllers.BlueskyController"
+      spacing="10" alignment="CENTER" prefWidth="400" prefHeight="300">
+
+    <Label text="Bluesky Authentication" style="-fx-font-size: 20px;"/>
+    <TextField fx:id="username" promptText="Username"/>
+    <PasswordField fx:id="password" promptText="Password"/>
+    <Button text="Connect" onAction="#authenticate"/>
+    <Button text="Back to Home" onAction="#goHome"/>
+</VBox>

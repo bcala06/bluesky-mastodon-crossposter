@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.crossposter.controllers.CreatePostController"
+      spacing="10" alignment="CENTER" prefWidth="400" prefHeight="300">
+
+    <Label text="Create Post" style="-fx-font-size: 20px;"/>
+    <TextArea fx:id="postText" promptText="Write your post here..."/>
+    <CheckBox fx:id="blueskyCheck" text="Post to Bluesky"/>
+    <CheckBox fx:id="mastodonCheck" text="Post to Mastodon"/>
+    <Button text="Submit" onAction="#submitPost"/>
+    <Button text="Back to Home" onAction="#goHome"/>
+</VBox>

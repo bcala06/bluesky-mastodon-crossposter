@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.*?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
@@ -34,7 +30,7 @@
     <!-- Main Content -->
     <center>
         <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40;">
-            <!-- Logo on top -->
+            <!-- Logo -->
             <ImageView fitHeight="80" preserveRatio="true">
                 <image>
                     <Image url="@../images/Bluesky_Logo.png"/>
@@ -43,6 +39,15 @@
 
             <Label text="Bluesky Authentication"
                    style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+
+            <!-- Input fields -->
+            <VBox spacing="10" maxWidth="300">
+                <Label text="Bluesky Handle:" />
+                <TextField fx:id="handleField" promptText="Enter handle" />
+
+                <Label text="App Password:" />
+                <PasswordField fx:id="passwordField" promptText="Enter app password" />
+            </VBox>
 
             <Button text="Authenticate" onAction="#handleAuthentication"
                     style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;"/>

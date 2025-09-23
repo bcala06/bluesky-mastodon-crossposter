@@ -1,9 +1,0 @@
-<VBox xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.crossposter.controllers.SettingsController"
-      spacing="10" alignment="CENTER" prefWidth="400" prefHeight="300">
-
-    <Label text="Settings" style="-fx-font-size: 20px;"/>
-    <Button text="Reconnect" onAction="#reconnect"/>
-    <Button text="Disconnect" onAction="#disconnect"/>
-    <Button text="Back to Home" onAction="#goHome"/>
-</VBox>

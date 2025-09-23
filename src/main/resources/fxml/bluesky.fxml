@@ -42,11 +42,11 @@
 
             <!-- Input fields -->
             <VBox spacing="10" maxWidth="300">
-                <Label text="Bluesky Handle:" />
-                <TextField fx:id="handleField" promptText="Enter handle" />
+                <Label text="Handle:" />
+                <TextField fx:id="handleField" promptText="example.bsky.social" />
 
-                <Label text="App Password:" />
-                <PasswordField fx:id="passwordField" promptText="Enter app password" />
+                <Label text="Password:" />
+                <PasswordField fx:id="passwordField" promptText="User/App Password" />
             </VBox>
 
             <Button text="Authenticate" onAction="#handleAuthentication"

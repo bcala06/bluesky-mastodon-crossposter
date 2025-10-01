@@ -37,11 +37,18 @@
             <version>20250517</version>
         </dependency>
 
-        <!-- ScribeJava for OAuth -->
+        <!-- ScribeJava -->
         <dependency>
             <groupId>com.github.scribejava</groupId>
             <artifactId>scribejava-core</artifactId>
             <version>8.3.3</version>
+        </dependency>
+
+        <!-- Nimbus JOSE+JWT -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>10.5</version>
         </dependency>
     </dependencies>
 

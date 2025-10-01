@@ -21,6 +21,7 @@ public class HttpUtil {
 
     // Send a POST with form or JSON body, returns response with headers
     public static HttpResponse<String> postFormWithResponse(String url, Map<String, String> headers, String body) {
+        System.out.println("url: " + url + "\nheaders: " + headers + "\nbody: " + body);
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -65,12 +66,8 @@ public class HttpUtil {
 
     // Extract DPoP nonce from response headers
     public static String extractDpopNonce(HttpResponse<String> response) {
-        java.net.http.HttpHeaders responseHeaders = response.headers();
-        java.util.List<String> nonceHeaders = responseHeaders.allValues("DPoP-Nonce");
-        
-        if (nonceHeaders != null && !nonceHeaders.isEmpty()) {
-            return nonceHeaders.get(0);
-        }
-        return null;
+        String nonce = response.headers().firstValue("DPoP-Nonce")
+                .orElse(response.headers().firstValue("dpop-nonce").orElse(null));
+        return nonce;
     }
 }

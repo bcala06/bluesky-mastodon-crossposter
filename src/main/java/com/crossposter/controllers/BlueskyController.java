@@ -36,8 +36,13 @@ public class BlueskyController {
         System.out.println("[Bluesky] Authenticate clicked");
 
         try {
-            // Start the OAuth flow (opens browser, waits for callback)
-            AuthSession session = blueskyClient.startAuth("https://bsky.social");
+            // Start the OAuth flow
+            String pdsOrigin = "https://bsky.social";
+            AuthSession session = blueskyClient.startAuth(pdsOrigin);
+
+            // Save the session and PDS origin to the registry
+            ServiceRegistry.setBlueskySession(session);
+            ServiceRegistry.setBlueskyPdsOrigin(pdsOrigin);
 
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setHeaderText("Authentication successful!");

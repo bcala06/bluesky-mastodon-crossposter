@@ -40,17 +40,15 @@
             <Label text="Bluesky Authentication"
                    style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
 
-            <!-- Input fields -->
-            <VBox spacing="10" maxWidth="300">
-                <Label text="Handle:" />
-                <TextField fx:id="handleField" promptText="example.bsky.social" />
+            <VBox spacing="15" maxWidth="400" alignment="CENTER">
+                <Button text="Start OAuth Login"
+                        onAction="#handleStartOAuth"
+                        style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;"/>
+                
+                <Label text="Click above to open the browser for authentication."
+                       style="-fx-alignment: center; -fx-wrap-text: true;"/>
 
-                <Label text="Password:" />
-                <PasswordField fx:id="passwordField" promptText="User/App Password" />
             </VBox>
-
-            <Button text="Authenticate" onAction="#handleAuthentication"
-                    style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;"/>
         </VBox>
     </center>
 </BorderPane>

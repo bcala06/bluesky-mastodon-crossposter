@@ -1,6 +1,9 @@
 package com.crossposter.controllers;
-import com.crossposter.services.BlueskySessionClient;
+
+import com.crossposter.services.AuthSession;
+import com.crossposter.services.BlueskyClient;
 import com.crossposter.services.ServiceRegistry;
+import com.crossposter.utils.LocalCallbackServer;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -8,8 +11,10 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.MouseEvent;
 
+import java.util.Map;
+
 public class CreatePostController {
-    private final BlueskySessionClient bluesky = ServiceRegistry.getBlueskyClient();
+    private final BlueskyClient blueskyClient = ServiceRegistry.getBlueskyClient();
 
     @FXML
     private TextArea postContent;
@@ -31,16 +36,44 @@ public class CreatePostController {
         System.out.println("Bluesky: " + postToBluesky);
         System.out.println("Mastodon: " + postToMastodon);
 
+        boolean allSuccess = true;
+
         if (postToBluesky) {
-            boolean success = bluesky.createPost(content);
-            Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR);
-            if (success) {
-                alert.setContentText("Posted to Bluesky successfully!");
-            } else {
-                alert.setContentText("Post to Bluesky failed.");
+            try {
+                AuthSession session = ServiceRegistry.getBlueskySession();
+                if (session == null || session.accessToken() == null) {
+                    showAlert(Alert.AlertType.WARNING, "Bluesky not authenticated", 
+                             "Please authenticate with Bluesky first.");
+                    allSuccess = false;
+                } else {
+                    String pdsOrigin = ServiceRegistry.getBlueskyPdsOrigin();
+                    Map<String, Object> result = blueskyClient.createPost(session, pdsOrigin, content);
+                    System.out.println("Bluesky post result: " + result);
+                    showAlert(Alert.AlertType.INFORMATION, "Success", "Posted to Bluesky successfully!");
+                }
+            } catch (Exception e) {
+                System.err.println("Error posting to Bluesky: " + e.getMessage());
+                e.printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to post to Bluesky: " + e.getMessage());
+                allSuccess = false;
             }
-            alert.showAndWait();
         }
+
+        if (postToMastodon) {
+            System.out.println("Posting to Mastodon...");
+        }
+
+        if (allSuccess && (postToBluesky || postToMastodon)) {
+            postContent.clear();
+        }
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     // Shared header

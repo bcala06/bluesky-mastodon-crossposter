@@ -36,6 +36,13 @@
             <artifactId>json</artifactId>
             <version>20250517</version>
         </dependency>
+
+        <!-- ScribeJava for OAuth -->
+        <dependency>
+            <groupId>com.github.scribejava</groupId>
+            <artifactId>scribejava-core</artifactId>
+            <version>8.3.3</version>
+        </dependency>
     </dependencies>
 
     <build>

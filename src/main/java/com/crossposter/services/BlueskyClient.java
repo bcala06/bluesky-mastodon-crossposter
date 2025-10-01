@@ -1,5 +1,3 @@
-// BlueskyClient.java
-
 package com.crossposter.services;
 
 import com.crossposter.utils.DPoPUtil;

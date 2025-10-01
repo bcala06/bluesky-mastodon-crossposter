@@ -35,7 +35,6 @@ public class BlueskyClient {
         String parEndpoint = (String) meta.get("pushed_authorization_request_endpoint");
         String authEndpoint = (String) meta.get("authorization_endpoint");
         String tokenEndpoint = (String) meta.get("token_endpoint");
-        String issuer = (String) meta.get("issuer");
 
         // PKCE setup
         String codeVerifier = PkceUtil.generateCodeVerifier();
@@ -44,39 +43,53 @@ public class BlueskyClient {
         // Init DPoP keypair
         DPoPUtil.init();
         AuthSession session = new AuthSession(codeVerifier);
-        session.issuer = issuer;
 
         // Build PAR request
         String state = UUID.randomUUID().toString();
-        Map<String, String> parParams = Map.of(
-                "response_type", "code",
-                "client_id", CLIENT_ID,
-                "redirect_uri", REDIRECT_URI,
-                "scope", SCOPE,
-                "code_challenge", codeChallenge,
-                "code_challenge_method", "S256",
-                "state", state,
-                "iss", pdsOrigin
+        String parBody = String.format(
+            "client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s&code_challenge=%s&code_challenge_method=S256",
+            urlenc(CLIENT_ID), urlenc(REDIRECT_URI), urlenc(SCOPE), urlenc(state), urlenc(codeChallenge), urlenc("S256")
         );
 
-        String parBody = HttpUtil.formEncode(parParams);
-        String dpop = DPoPUtil.buildDPoP("POST", parEndpoint, session.dpopNonce);
-        
+        // First PAR attempt
+        String dpop1 = DPoPUtil.buildDPoP("POST", parEndpoint, session.dpopNonce);
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded");
-        headers.put("DPoP", dpop);
+        headers.put("DPoP", dpop1);
         
         var parResponse = HttpUtil.postFormWithResponse(parEndpoint, headers, parBody);
         
-        // Update DPoP nonce if provided in response
+        // Check if we need to retry with nonce (401 or 400 with use_dpop_nonce)
+        int statusCode = parResponse.statusCode();
+        boolean needsRetry = (statusCode == 401) || 
+                           (statusCode == 400 && parResponse.body().contains("\"use_dpop_nonce\""));
+        
+        if (needsRetry) {
+            String nonce = HttpUtil.extractDpopNonce(parResponse);
+            if (nonce != null && !nonce.isEmpty()) {
+                session.dpopNonce = nonce;
+                String dpop2 = DPoPUtil.buildDPoP("POST", parEndpoint, session.dpopNonce);
+                
+                headers.put("DPoP", dpop2);
+                parResponse = HttpUtil.postFormWithResponse(parEndpoint, headers, parBody);
+            }
+        }
+
+        // Update DPoP nonce if provided in final response
         String newNonce = HttpUtil.extractDpopNonce(parResponse);
         if (newNonce != null) {
             session.dpopNonce = newNonce;
         }
 
+        if (parResponse.statusCode() != 200 && parResponse.statusCode() != 201) {
+            throw new IOException("PAR failed with status " + parResponse.statusCode() + ": " + parResponse.body());
+        }
+
         Map<String, Object> parJson = MAPPER.readValue(parResponse.body(), Map.class);
         String requestUri = (String) parJson.get("request_uri");
-        if (requestUri == null) throw new IOException("PAR failed, no request_uri");
+        if (requestUri == null || requestUri.trim().isEmpty()) {
+            throw new IOException("PAR failed, no request_uri returned: " + parResponse.body());
+        }
 
         // Open system browser to authorization URL
         String authUrl = authEndpoint
@@ -89,20 +102,17 @@ public class BlueskyClient {
         Desktop.getDesktop().browse(URI.create(authUrl));
 
         LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
-        callbackServer.stop(); // Clean up the server
+        callbackServer.stop();
         if (cb == null) throw new IOException("Timeout waiting for callback");
         if (!state.equals(cb.state())) throw new IOException("State mismatch");
         String code = cb.code();
 
         // Token exchange
-        Map<String, String> tokenParams = Map.of(
-                "grant_type", "authorization_code",
-                "code", code,
-                "redirect_uri", REDIRECT_URI,
-                "code_verifier", codeVerifier,
-                "client_id", CLIENT_ID
+        String tokenBody = String.format(
+            "grant_type=authorization_code&code=%s&redirect_uri=%s&code_verifier=%s&client_id=%s",
+            urlenc(code), urlenc(REDIRECT_URI), urlenc(codeVerifier), urlenc(CLIENT_ID)
         );
-        String tokenBody = HttpUtil.formEncode(tokenParams);
+        
         String tokenDpop = DPoPUtil.buildDPoP("POST", tokenEndpoint, session.dpopNonce);
 
         headers.clear();
@@ -118,39 +128,44 @@ public class BlueskyClient {
         }
 
         Map<String, Object> tokenJson = MAPPER.readValue(tokenResponse.body(), Map.class);
+        
+        // Check for errors
+        String error = (String) tokenJson.get("error");
+        if (error != null) {
+            String errorDescription = (String) tokenJson.get("error_description");
+            throw new IOException("Token Exchange Error: " + error + 
+                (errorDescription != null ? " - " + errorDescription : ""));
+        }
+
         session.accessToken = (String) tokenJson.get("access_token");
         session.refreshToken = (String) tokenJson.get("refresh_token");
 
-        // Get the user's DID using the session information
-        session.did = getSession(session, pdsOrigin).get("did").toString();
+        // Extract DID from the JWT token (the 'sub' claim)
+        session.did = extractDidFromToken(session.accessToken);
+        if (session.did == null) {
+            throw new IOException("Could not extract DID from access token");
+        }
 
         return session;
     }
 
-    private Map<String, Object> getSession(AuthSession session, String pdsOrigin) throws Exception {
-        String url = pdsOrigin + "/xrpc/com.atproto.session.get";
-        
-        String dpop = DPoPUtil.buildDPoP("GET", url, session.dpopNonce);
-
-        Map<String, String> headers = Map.of(
-                "Authorization", "DPoP " + session.accessToken,
-                "DPoP", dpop
-        );
-
-        var response = HttpUtil.getWithResponse(url, headers);
-        
-        // Update DPoP nonce if provided in response
-        String newNonce = HttpUtil.extractDpopNonce(response);
-        if (newNonce != null) {
-            // You might want to update the session nonce here if needed
-            // session.dpopNonce = newNonce;
+    private String extractDidFromToken(String accessToken) {
+        try {
+            // JWT has 3 parts separated by dots
+            String[] parts = accessToken.split("\\.");
+            if (parts.length >= 2) {
+                // Decode the payload (second part)
+                String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
+                Map<String, Object> claims = MAPPER.readValue(payload, Map.class);
+                Object sub = claims.get("sub");
+                if (sub != null && sub.toString().startsWith("did:")) {
+                    return sub.toString();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Could not extract DID from token: " + e.getMessage());
         }
-        
-        return MAPPER.readValue(response.body(), Map.class);
-    }
-
-    private static String urlenc(String s) {
-        return URLEncoder.encode(s, StandardCharsets.UTF_8);
+        return null;
     }
 
     public Map<String, Object> createPost(AuthSession session, String pdsOrigin, String text) throws Exception {
@@ -183,9 +198,6 @@ public class BlueskyClient {
                 "Content-Type", "application/json"
         );
 
-        var response = HttpUtil.getWithResponse(url, headers); // This should be postFormWithResponse
-        
-        // Actually, let's fix this - it should be a POST request
         var postResponse = HttpUtil.postFormWithResponse(url, headers, jsonBody);
         
         // Update DPoP nonce if provided in response
@@ -195,5 +207,9 @@ public class BlueskyClient {
         }
 
         return MAPPER.readValue(postResponse.body(), Map.class);
+    }
+
+    private static String urlenc(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 }

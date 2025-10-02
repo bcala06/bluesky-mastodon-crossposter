@@ -21,7 +21,6 @@ public class HomeController {
 
     @FXML
     public void initialize() {
-        // Update button states whenever Home loads
         updateButtons();
     }
 
@@ -58,7 +57,6 @@ public class HomeController {
     @FXML
     public void openBluesky(ActionEvent event) {
         if (ServiceRegistry.getBlueskySession() != null) {
-            // Ask confirmation before disconnecting
             if (confirmDisconnect("Bluesky")) {
                 ServiceRegistry.setBlueskySession(null);
                 ServiceRegistry.setBlueskyPdsOrigin(null);
@@ -74,7 +72,6 @@ public class HomeController {
     @FXML
     public void openMastodon(ActionEvent event) {
         if (ServiceRegistry.getMastodonSession() != null) {
-            // Ask confirmation before disconnecting
             if (confirmDisconnect("Mastodon")) {
                 ServiceRegistry.setMastodonSession(null);
                 System.out.println("[Home] Mastodon disconnected.");

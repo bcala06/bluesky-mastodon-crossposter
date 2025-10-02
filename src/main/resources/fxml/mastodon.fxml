@@ -45,6 +45,9 @@
             <Label text="Mastodon Authentication"
                    style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
 
+            <Label text="Enter your full Mastodon handle (e.g. user@mastodon.social)" 
+                    style="-fx-font-size: 12px; -fx-text-fill: gray;"/>
+
             <TextField fx:id="mastodonHandleField"
                        promptText="user@instance.com or instance.com"
                        style="-fx-pref-width: 300;"/>

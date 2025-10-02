@@ -36,32 +36,42 @@
         <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40;">
 
             <!-- Bluesky Box -->
-            <HBox spacing="20" style="-fx-background-color: #f9f9f9; -fx-padding: 15; -fx-background-radius: 10; -fx-border-color: #999999; -fx-border-radius: 10; -fx-border-width: 1;"
+            <HBox spacing="20"
+                  style="-fx-background-color: #f9f9f9; -fx-padding: 15; -fx-background-radius: 10;
+                         -fx-border-color: #999999; -fx-border-radius: 10; -fx-border-width: 1;"
                   alignment="CENTER_LEFT" prefWidth="400">
+
                 <!-- Logo -->
                 <ImageView fitHeight="40" preserveRatio="true">
                     <image>
                         <Image url="@../images/Bluesky_Logo.png"/>
                     </image>
                 </ImageView>
+
                 <Region HBox.hgrow="ALWAYS"/>
-                <!-- Connect Button -->
-                <Button text="Connect" onAction="#openBluesky"
+
+                <!-- Bluesky Connect/Disconnect Button -->
+                <Button fx:id="blueskyButton" text="Connect" onAction="#openBluesky"
                         style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;"/>
             </HBox>
 
             <!-- Mastodon Box -->
-            <HBox spacing="20" style="-fx-background-color: #f9f9f9; -fx-padding: 15; -fx-background-radius: 10; -fx-border-color: #999999; -fx-border-radius: 10; -fx-border-width: 1;"
+            <HBox spacing="20"
+                  style="-fx-background-color: #f9f9f9; -fx-padding: 15; -fx-background-radius: 10;
+                         -fx-border-color: #999999; -fx-border-radius: 10; -fx-border-width: 1;"
                   alignment="CENTER_LEFT" prefWidth="400">
+
                 <!-- Logo -->
                 <ImageView fitHeight="40" preserveRatio="true">
                     <image>
                         <Image url="@../images/Mastodon_Logo.png"/>
                     </image>
                 </ImageView>
+
                 <Region HBox.hgrow="ALWAYS"/>
-                <!-- Connect Button -->
-                <Button text="Connect" onAction="#openMastodon"
+
+                <!-- Mastodon Connect/Disconnect Button -->
+                <Button fx:id="mastodonButton" text="Connect" onAction="#openMastodon"
                         style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;"/>
             </HBox>
 

@@ -1,5 +1,3 @@
-// MastodonController.java
-
 package com.crossposter.controllers;
 
 import com.crossposter.services.MastodonClient;
@@ -15,9 +13,9 @@ import javafx.scene.input.MouseEvent;
 public class MastodonController {
 
     private final MastodonClient mastodonClient = ServiceRegistry.getMastodonClient();
-    
+
     @FXML
-    private TextField mastodonHandleField; // Assuming you add this TextField to your FXML
+    private TextField mastodonHandleField;
 
     public void openHome(MouseEvent event) {
         System.out.println("[Mastodon] Navigating to Home...");
@@ -57,8 +55,8 @@ public class MastodonController {
             alert.setContentText("Logged in to instance: " + session.instanceUrl);
             alert.showAndWait();
 
-            // Redirect user to "Create Post" scene
-            SceneManager.switchScene("/fxml/create_post.fxml", "Create Post");
+            // Redirect user back to Home (so button updates)
+            SceneManager.switchScene("/fxml/home.fxml", "Home");
 
         } catch (Exception e) {
             e.printStackTrace();

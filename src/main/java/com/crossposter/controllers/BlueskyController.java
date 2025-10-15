@@ -49,8 +49,8 @@ public class BlueskyController {
             alert.setContentText("Logged in as DID: " + session.did());
             alert.showAndWait();
 
-            // Redirect user to "Create Post" scene
-            SceneManager.switchScene("/fxml/create_post.fxml", "Create Post");
+            // Redirect user back to Home (so button updates)
+            SceneManager.switchScene("/fxml/home.fxml", "Home");
 
         } catch (Exception e) {
             e.printStackTrace();

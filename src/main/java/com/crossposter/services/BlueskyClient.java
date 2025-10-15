@@ -10,12 +10,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
+import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
 
 public class BlueskyClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -54,20 +57,18 @@ public class BlueskyClient {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-www-form-urlencoded");
         headers.put("DPoP", dpop1);
-        
+
         var parResponse = HttpUtil.postFormWithResponse(parEndpoint, headers, parBody);
-        
+
         // Check if we need to retry with nonce (401 or 400 with use_dpop_nonce)
         int statusCode = parResponse.statusCode();
-        boolean needsRetry = (statusCode == 401) || 
-                           (statusCode == 400 && parResponse.body().contains("\"use_dpop_nonce\""));
-        
+        boolean needsRetry = (statusCode == 401) || (statusCode == 400 && parResponse.body().contains("\"use_dpop_nonce\""));
+
         if (needsRetry) {
             String nonce = HttpUtil.extractDpopNonce(parResponse);
             if (nonce != null && !nonce.isEmpty()) {
                 session.dpopNonce = nonce;
                 String dpop2 = DPoPUtil.buildDPoP("POST", parEndpoint, session.dpopNonce);
-                
                 headers.put("DPoP", dpop2);
                 parResponse = HttpUtil.postFormWithResponse(parEndpoint, headers, parBody);
             }
@@ -89,62 +90,105 @@ public class BlueskyClient {
             throw new IOException("PAR failed, no request_uri returned: " + parResponse.body());
         }
 
-        // Open system browser to authorization URL
         String authUrl = authEndpoint
                 + "?client_id=" + urlenc(CLIENT_ID)
                 + "&request_uri=" + urlenc(requestUri)
                 + "&state=" + urlenc(state);
 
         LocalCallbackServer callbackServer = new LocalCallbackServer();
-        callbackServer.start();
-        Desktop.getDesktop().browse(URI.create(authUrl));
+        try {
+            callbackServer.start();
+            waitForLocalServer("127.0.0.1", 8080, 2000);
 
-        LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
-        callbackServer.stop();
-        if (cb == null) throw new IOException("Timeout waiting for callback");
-        if (!state.equals(cb.state())) throw new IOException("State mismatch");
-        String code = cb.code();
+            // Open system browser (best-effort). If Desktop fails, print URL so caller can open manually.
+            try {
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(URI.create(authUrl));
+                } else {
+                    System.out.println("Open this URL in your browser: " + authUrl);
+                }
+            } catch (Exception e) {
+                System.out.println("Failed to open system browser: " + e.getMessage());
+                System.out.println("Open this URL in your browser: " + authUrl);
+            }
 
-        // Token exchange
-        String tokenBody = String.format(
-            "grant_type=authorization_code&code=%s&redirect_uri=%s&code_verifier=%s&client_id=%s",
-            urlenc(code), urlenc(REDIRECT_URI), urlenc(codeVerifier), urlenc(CLIENT_ID)
-        );
-        
-        String tokenDpop = DPoPUtil.buildDPoP("POST", tokenEndpoint, session.dpopNonce);
+            // Wait for callback (blocking)
+            LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
+            if (cb == null) throw new IOException("Timeout waiting for callback");
+            if (!state.equals(cb.state())) throw new IOException("State mismatch");
+            String code = cb.code();
 
-        headers.clear();
-        headers.put("Content-Type", "application/x-www-form-urlencoded");
-        headers.put("DPoP", tokenDpop);
+            // Token exchange
+            String tokenBody = String.format(
+                "grant_type=authorization_code&code=%s&redirect_uri=%s&code_verifier=%s&client_id=%s",
+                urlenc(code), urlenc(REDIRECT_URI), urlenc(codeVerifier), urlenc(CLIENT_ID)
+            );
 
-        var tokenResponse = HttpUtil.postFormWithResponse(tokenEndpoint, headers, tokenBody);
-        
-        // Update DPoP nonce if provided in response
-        newNonce = HttpUtil.extractDpopNonce(tokenResponse);
-        if (newNonce != null) {
-            session.dpopNonce = newNonce;
+            String tokenDpop = DPoPUtil.buildDPoP("POST", tokenEndpoint, session.dpopNonce);
+
+            headers.clear();
+            headers.put("Content-Type", "application/x-www-form-urlencoded");
+            headers.put("DPoP", tokenDpop);
+
+            var tokenResponse = HttpUtil.postFormWithResponse(tokenEndpoint, headers, tokenBody);
+
+            // Update DPoP nonce if provided in response
+            newNonce = HttpUtil.extractDpopNonce(tokenResponse);
+            if (newNonce != null) {
+                session.dpopNonce = newNonce;
+            }
+
+            Map<String, Object> tokenJson = MAPPER.readValue(tokenResponse.body(), Map.class);
+
+            // Check for errors
+            String error = (String) tokenJson.get("error");
+            if (error != null) {
+                String errorDescription = (String) tokenJson.get("error_description");
+                throw new IOException("Token Exchange Error: " + error +
+                    (errorDescription != null ? " - " + errorDescription : ""));
+            }
+
+            session.accessToken = (String) tokenJson.get("access_token");
+            session.refreshToken = (String) tokenJson.get("refresh_token");
+
+            // Extract DID from the JWT token (the 'sub' claim)
+            session.did = extractDidFromToken(session.accessToken);
+            if (session.did == null) {
+                throw new IOException("Could not extract DID from access token");
+            }
+
+            return session;
+
+        } finally {
+            try {
+                callbackServer.stop();
+            } catch (Exception ignored) {}
         }
+    }
 
-        Map<String, Object> tokenJson = MAPPER.readValue(tokenResponse.body(), Map.class);
-        
-        // Check for errors
-        String error = (String) tokenJson.get("error");
-        if (error != null) {
-            String errorDescription = (String) tokenJson.get("error_description");
-            throw new IOException("Token Exchange Error: " + error + 
-                (errorDescription != null ? " - " + errorDescription : ""));
+    /**
+     * Waits until a TCP connection can be established to the given host:port or until timeout.
+     * This reduces timing races where the browser navigates to the redirect before the server is ready.
+     *
+     * @param host host, e.g. "127.0.0.1"
+     * @param port port, e.g. 8080
+     * @param maxMillis maximum time to wait in milliseconds
+     */
+    private static void waitForLocalServer(String host, int port, int maxMillis) {
+        long deadline = System.currentTimeMillis() + maxMillis;
+        while (System.currentTimeMillis() < deadline) {
+            try (Socket s = new Socket()) {
+                s.connect(new InetSocketAddress(host, port), 250);
+                return;
+            } catch (IOException e) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
-
-        session.accessToken = (String) tokenJson.get("access_token");
-        session.refreshToken = (String) tokenJson.get("refresh_token");
-
-        // Extract DID from the JWT token (the 'sub' claim)
-        session.did = extractDidFromToken(session.accessToken);
-        if (session.did == null) {
-            throw new IOException("Could not extract DID from access token");
-        }
-
-        return session;
     }
 
     private String extractDidFromToken(String accessToken) {
@@ -197,7 +241,7 @@ public class BlueskyClient {
         );
 
         var postResponse = HttpUtil.postFormWithResponse(url, headers, jsonBody);
-        
+
         // Update DPoP nonce if provided in response
         String newNonce = HttpUtil.extractDpopNonce(postResponse);
         if (newNonce != null) {

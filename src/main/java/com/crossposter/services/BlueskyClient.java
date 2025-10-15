@@ -100,7 +100,7 @@ public class BlueskyClient {
             callbackServer.start();
             waitForLocalServer("127.0.0.1", 8080, 2000);
 
-            // Open system browser (best-effort). If Desktop fails, print URL so caller can open manually.
+            // Open system browser. If Desktop fails, print URL so caller can open manually.
             try {
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
                     Desktop.getDesktop().browse(URI.create(authUrl));
@@ -112,7 +112,7 @@ public class BlueskyClient {
                 System.out.println("Open this URL in your browser: " + authUrl);
             }
 
-            // Wait for callback (blocking)
+            // Wait for callback
             LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
             if (cb == null) throw new IOException("Timeout waiting for callback");
             if (!state.equals(cb.state())) throw new IOException("State mismatch");
@@ -148,6 +148,7 @@ public class BlueskyClient {
                     (errorDescription != null ? " - " + errorDescription : ""));
             }
 
+            // Supply session tokens
             session.accessToken = (String) tokenJson.get("access_token");
             session.refreshToken = (String) tokenJson.get("refresh_token");
 
@@ -166,14 +167,6 @@ public class BlueskyClient {
         }
     }
 
-    /**
-     * Waits until a TCP connection can be established to the given host:port or until timeout.
-     * This reduces timing races where the browser navigates to the redirect before the server is ready.
-     *
-     * @param host host, e.g. "127.0.0.1"
-     * @param port port, e.g. 8080
-     * @param maxMillis maximum time to wait in milliseconds
-     */
     private static void waitForLocalServer(String host, int port, int maxMillis) {
         long deadline = System.currentTimeMillis() + maxMillis;
         while (System.currentTimeMillis() < deadline) {

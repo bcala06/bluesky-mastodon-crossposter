@@ -1,14 +1,15 @@
-// MastodonClient.java
-
 package com.crossposter.services;
 
 import com.crossposter.utils.HttpUtil;
 import com.crossposter.utils.LocalCallbackServer;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
+import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -18,11 +19,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MastodonClient {
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    
     private static final String CLIENT_NAME = "crossposter";
-    private static final String SCOPES = "read write follow";
     private static final String REDIRECT_URI = "http://127.0.0.1:8080/callback";
+    private static final String SCOPES = "read write follow";
 
     private final Map<String, InstanceCredentials> instanceCredentials = new HashMap<>();
 
@@ -132,9 +133,10 @@ public class MastodonClient {
         // Check if credentials are available, register if not
         InstanceCredentials creds = instanceCredentials.get(instanceUrl);
         if (creds == null) {
-            creds = registerApp(instanceUrl); // Register dynamically
+            creds = registerApp(instanceUrl);
         }
 
+        AuthSession session = new AuthSession(null);
         String authEndpoint = instanceUrl + "/oauth/authorize";
 
         String state = UUID.randomUUID().toString();
@@ -146,54 +148,86 @@ public class MastodonClient {
                 "&state=" + urlenc(state);
 
         LocalCallbackServer callbackServer = new LocalCallbackServer();
-        callbackServer.start();
-        Desktop.getDesktop().browse(URI.create(authUrl));
+        try {
+            callbackServer.start();
+            waitForLocalServer("127.0.0.1", 8080, 2000);
+            
+            // Open system browser. If Desktop fails, print URL so caller can open manually.
+            try {
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(URI.create(authUrl));
+                } else {
+                    System.out.println("Open this URL in your browser: " + authUrl);
+                }
+            } catch (Exception e) {
+                System.out.println("Failed to open system browser: " + e.getMessage());
+                System.out.println("Open this URL in your browser: " + authUrl);
+            }
 
-        LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
-        callbackServer.stop();
+            // Wait for callback
+            LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
+            if (cb == null) throw new IOException("Timeout waiting for callback");
+            if (!state.equals(cb.state())) throw new IOException("State mismatch");
 
-        if (cb == null) {
-            throw new IOException("Timeout waiting for OAuth callback.");
+            // Token exchange
+            String tokenEndpoint = instanceUrl + "/oauth/token";
+            String tokenBody = String.format(
+                "client_id=%s&client_secret=%s&code=%s&grant_type=authorization_code&redirect_uri=%s",
+                urlenc(creds.clientId), urlenc(creds.clientSecret), urlenc(cb.code()), urlenc(REDIRECT_URI)
+            );
+
+            Map<String, String> tokenHeaders = Map.of(
+                    "Content-Type", "application/x-www-form-urlencoded"
+            );
+
+            var tokenResponse = HttpUtil.postFormWithResponse(tokenEndpoint, tokenHeaders, tokenBody);
+
+            if (tokenResponse.statusCode() != 200) {
+                throw new IOException("Token exchange failed with status: " + tokenResponse.statusCode() + ", body: " + tokenResponse.body());
+            }
+
+            Map<String, Object> tokenData = MAPPER.readValue(tokenResponse.body(), Map.class);
+            String accessToken = (String) tokenData.get("access_token");
+            String refreshToken = (String) tokenData.get("refresh_token");
+            String tokenType = (String) tokenData.get("token_type");
+
+            // Check for errors
+            if (accessToken == null) {
+                throw new IOException("Token exchange response missing access_token: " + tokenResponse.body());
+            }
+            if (!"Bearer".equalsIgnoreCase(tokenType)) {
+                System.out.println("Warning: Expected token_type 'Bearer', got '" + tokenType + "'");
+            }
+
+            // Supply session tokens
+            session.accessToken = accessToken;
+            session.refreshToken = refreshToken;
+            session.instanceUrl = instanceUrl;
+
+            return session;
+
+        } finally {
+             try {
+                callbackServer.stop();
+            } catch (Exception ignored) {}
         }
-        if (!state.equals(cb.state())) {
-            throw new IOException("State mismatch during OAuth callback.");
+    }
+
+    private static void waitForLocalServer(String host, int port, int maxMillis) {
+        long deadline = System.currentTimeMillis() + maxMillis;
+        while (System.currentTimeMillis() < deadline) {
+            try (Socket s = new Socket()) {
+                s.connect(new InetSocketAddress(host, port), 250);
+                return;
+            } catch (IOException e) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
-
-        String tokenEndpoint = instanceUrl + "/oauth/token";
-        String tokenBody = String.format(
-            "client_id=%s&client_secret=%s&code=%s&grant_type=authorization_code&redirect_uri=%s",
-            urlenc(creds.clientId), urlenc(creds.clientSecret), urlenc(cb.code()), urlenc(REDIRECT_URI)
-        );
-
-        Map<String, String> tokenHeaders = Map.of(
-                "Content-Type", "application/x-www-form-urlencoded"
-        );
-
-        var tokenResponse = HttpUtil.postFormWithResponse(tokenEndpoint, tokenHeaders, tokenBody);
-
-        if (tokenResponse.statusCode() != 200) {
-            throw new IOException("Token exchange failed with status: " + tokenResponse.statusCode() + ", body: " + tokenResponse.body());
-        }
-
-        Map<String, Object> tokenData = MAPPER.readValue(tokenResponse.body(), Map.class);
-        String accessToken = (String) tokenData.get("access_token");
-        String refreshToken = (String) tokenData.get("refresh_token");
-        String tokenType = (String) tokenData.get("token_type");
-
-        if (accessToken == null) {
-             throw new IOException("Token exchange response missing access_token: " + tokenResponse.body());
-        }
-        if (!"Bearer".equalsIgnoreCase(tokenType)) {
-             System.out.println("Warning: Expected token_type 'Bearer', got '" + tokenType + "'");
-        }
-
-        AuthSession session = new AuthSession(null);
-        session.accessToken = accessToken;
-        session.refreshToken = refreshToken;
-        session.instanceUrl = instanceUrl;
-
-        System.out.println("Successfully authenticated with Mastodon instance: " + instanceUrl);
-        return session;
     }
 
     public Map<String, Object> postStatus(AuthSession session, String content) throws Exception {

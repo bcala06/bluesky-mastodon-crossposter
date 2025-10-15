@@ -51,7 +51,7 @@ public class LocalCallbackServer {
                 // Stop the server
                 stop();
             } else {
-                exchange.sendResponseHeaders(405, 0); // Method Not Allowed
+                exchange.sendResponseHeaders(405, 0);
                 exchange.getResponseBody().close();
             }
         });
@@ -77,7 +77,7 @@ public class LocalCallbackServer {
         try {
             return callbackFuture.get(timeoutSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
-            return null; // Timeout or error
+            return null;
         }
     }
 

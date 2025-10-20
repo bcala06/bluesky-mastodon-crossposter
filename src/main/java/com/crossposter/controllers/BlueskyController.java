@@ -10,54 +10,55 @@ import javafx.scene.control.Alert;
 import javafx.scene.input.MouseEvent;
 
 public class BlueskyController {
+
     private final BlueskyClient blueskyClient = ServiceRegistry.getBlueskyClient();
 
+    // Navigation
     @FXML
-    public void openHome(MouseEvent event) {
-        System.out.println("[Bluesky] Navigating to Home...");
-        SceneManager.switchScene("/fxml/home.fxml", "Home");
+    private void openDashboard(MouseEvent event) {
+        System.out.println("[Bluesky] Navigating to Dashboard...");
+        SceneManager.switchScene("/fxml/dashboard.fxml", "Dashboard");
     }
 
     @FXML
-    public void openCreatePost(MouseEvent event) {
+    private void openCreatePost(MouseEvent event) {
         System.out.println("[Bluesky] Navigating to Create Post...");
         SceneManager.switchScene("/fxml/create_post.fxml", "Create Post");
     }
 
     @FXML
-    public void openSettings(MouseEvent event) {
+    private void openSettings(MouseEvent event) {
         System.out.println("[Bluesky] Navigating to Settings...");
         SceneManager.switchScene("/fxml/settings.fxml", "Settings");
     }
 
-    // Main content action
+    // Authenticate action
     @FXML
-    public void handleStartOAuth(ActionEvent event) {
+    private void handleStartOAuth(ActionEvent event) {
         System.out.println("[Bluesky] Authenticate clicked");
 
         try {
-            // Start the OAuth flow
             String pdsOrigin = "https://bsky.social";
             AuthSession session = blueskyClient.startAuth(pdsOrigin);
 
-            // Save the session and PDS origin to the registry
             ServiceRegistry.setBlueskySession(session);
             ServiceRegistry.setBlueskyPdsOrigin(pdsOrigin);
 
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setHeaderText("Authentication successful!");
-            alert.setContentText("Logged in as DID: " + session.did());
-            alert.showAndWait();
+            showAlert(Alert.AlertType.INFORMATION, "Authentication successful!",
+                    "Logged in as DID: " + session.did());
 
-            // Redirect user back to Home (so button updates)
-            SceneManager.switchScene("/fxml/home.fxml", "Home");
+            SceneManager.switchScene("/fxml/dashboard.fxml", "Dashboard");
 
         } catch (Exception e) {
             e.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setHeaderText("Authentication failed!");
-            alert.setContentText("Error: " + e.getMessage());
-            alert.showAndWait();
+            showAlert(Alert.AlertType.ERROR, "Authentication failed!", "Error: " + e.getMessage());
         }
+    }
+
+    private void showAlert(Alert.AlertType type, String header, String content) {
+        Alert alert = new Alert(type);
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 }

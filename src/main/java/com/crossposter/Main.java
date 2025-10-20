@@ -10,8 +10,8 @@ public class Main extends Application {
     public void start(Stage stage) {
         SceneManager.setStage(stage);
 
-        // Load the home screen
-        SceneManager.switchScene("/fxml/home.fxml", "Crossposter");
+        // Load the Dashboard screen
+        SceneManager.switchScene("/fxml/dashboard.fxml", "Crossposter Dashboard");
 
         // Make window maximized by default
         stage.setMaximized(true);
@@ -24,4 +24,3 @@ public class Main extends Application {
         launch();
     }
 }
-

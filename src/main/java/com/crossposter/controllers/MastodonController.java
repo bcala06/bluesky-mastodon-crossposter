@@ -17,53 +17,54 @@ public class MastodonController {
     @FXML
     private TextField mastodonHandleField;
 
-    public void openHome(MouseEvent event) {
-        System.out.println("[Mastodon] Navigating to Home...");
-        SceneManager.switchScene("/fxml/home.fxml", "Home");
+    // Navigation
+    @FXML
+    private void openDashboard(MouseEvent event) {
+        System.out.println("[Mastodon] Navigating to Dashboard...");
+        SceneManager.switchScene("/fxml/dashboard.fxml", "Dashboard");
     }
 
-    public void openCreatePost(MouseEvent event) {
+    @FXML
+    private void openCreatePost(MouseEvent event) {
         System.out.println("[Mastodon] Navigating to Create Post...");
         SceneManager.switchScene("/fxml/create_post.fxml", "Create Post");
     }
 
-    public void openSettings(MouseEvent event) {
+    @FXML
+    private void openSettings(MouseEvent event) {
         System.out.println("[Mastodon] Navigating to Settings...");
         SceneManager.switchScene("/fxml/settings.fxml", "Settings");
     }
 
-    // Main content action
-    public void handleAuthentication(ActionEvent event) {
+    // Authenticate action
+    @FXML
+    private void handleAuthentication(ActionEvent event) {
         System.out.println("[Mastodon] Authenticate clicked");
 
         String userInput = mastodonHandleField.getText();
         if (userInput == null || userInput.trim().isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setHeaderText("Input Required");
-            alert.setContentText("Please enter your Mastodon handle or instance.");
-            alert.showAndWait();
+            showAlert(Alert.AlertType.WARNING, "Input Required", "Please enter your Mastodon handle or instance.");
             return;
         }
 
         try {
-            // Start the OAuth flow using the user's input
             AuthSession session = mastodonClient.startAuth(userInput);
             ServiceRegistry.setMastodonSession(session);
 
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setHeaderText("Authentication successful!");
-            alert.setContentText("Logged in to instance: " + session.instanceUrl);
-            alert.showAndWait();
+            showAlert(Alert.AlertType.INFORMATION, "Authentication successful!",
+                    "Logged in to instance: " + session.instanceUrl);
 
-            // Redirect user back to Home (so button updates)
-            SceneManager.switchScene("/fxml/home.fxml", "Home");
-
+            SceneManager.switchScene("/fxml/dashboard.fxml", "Dashboard");
         } catch (Exception e) {
             e.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setHeaderText("Authentication failed!");
-            alert.setContentText("Error: " + e.getMessage());
-            alert.showAndWait();
+            showAlert(Alert.AlertType.ERROR, "Authentication failed!", "Error: " + e.getMessage());
         }
+    }
+
+    private void showAlert(Alert.AlertType type, String header, String content) {
+        Alert alert = new Alert(type);
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 }

@@ -12,25 +12,23 @@
     <top>
         <HBox spacing="10" style="-fx-background-color: #556CFF; -fx-padding: 10;" alignment="CENTER_LEFT">
             <children>
-                <ImageView fitHeight="40" preserveRatio="true"/>
-                <Label text="BMC Crossposter"
-                       onMouseClicked="#openHome"
-                       style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                <!-- Logo links back to Dashboard -->
+                <ImageView fitHeight="40" preserveRatio="true" onMouseClicked="#openDashboard" style="-fx-cursor: hand;">
+                    <image>
+                        <Image url="@../images/BMClogo.png"/>
+                    </image>
+                </ImageView>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label text="Create Post"
                        onMouseClicked="#openCreatePost"
                        style="-fx-text-fill: white; -fx-font-size: 14px; -fx-cursor: hand; -fx-padding: 0 15 0 0;"/>
-                <Label text="Settings"
-                       onMouseClicked="#openSettings"
-                       style="-fx-text-fill: white; -fx-font-size: 14px; -fx-cursor: hand;"/>
             </children>
         </HBox>
     </top>
 
     <!-- Main Content -->
     <center>
-        <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40;">
-            <!-- Logo -->
+        <VBox alignment="CENTER" spacing="25" style="-fx-padding: 50;">
             <ImageView fitHeight="80" preserveRatio="true">
                 <image>
                     <Image url="@../images/Bluesky_Logo.png"/>
@@ -43,11 +41,10 @@
             <VBox spacing="15" maxWidth="400" alignment="CENTER">
                 <Button text="Start OAuth Login"
                         onAction="#handleStartOAuth"
-                        style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;"/>
+                        style="-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5; -fx-font-weight: bold;"/>
                 
                 <Label text="Click above to open the browser for authentication."
-                       style="-fx-alignment: center; -fx-wrap-text: true;"/>
-
+                       style="-fx-alignment: center; -fx-wrap-text: true; -fx-text-fill: gray;"/>
             </VBox>
         </VBox>
     </center>

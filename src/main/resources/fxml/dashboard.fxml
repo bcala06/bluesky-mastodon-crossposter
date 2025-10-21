@@ -28,8 +28,8 @@
                               -fx-font-size: 20px; 
                               -fx-font-weight: 600;"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label text="●" style="-fx-text-fill: #34c759; -fx-font-size: 16px;"/>
-                <Label text="Online" style="-fx-text-fill: #86868b; -fx-font-size: 13px;"/>
+                <!-- <Label text="●" style="-fx-text-fill: #34c759; -fx-font-size: 16px;"/> -->
+                <!-- <Label text="Online" style="-fx-text-fill: #86868b; -fx-font-size: 13px;"/> -->
             </children>
         </HBox>
     </top>

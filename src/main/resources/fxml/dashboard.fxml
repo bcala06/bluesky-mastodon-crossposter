@@ -28,8 +28,6 @@
                               -fx-font-size: 20px; 
                               -fx-font-weight: 600;"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <!-- <Label text="●" style="-fx-text-fill: #34c759; -fx-font-size: 16px;"/> -->
-                <!-- <Label text="Online" style="-fx-text-fill: #86868b; -fx-font-size: 13px;"/> -->
             </children>
         </HBox>
     </top>
@@ -38,41 +36,41 @@
     <center>
         <ScrollPane fitToWidth="true" style="-fx-background-color: #f5f5f7; -fx-background: #f5f5f7;">
             <VBox alignment="TOP_CENTER" spacing="35" style="-fx-padding: 50 20;">
-                
+
                 <!-- Platform Connections -->
                 <VBox spacing="20" alignment="CENTER" prefWidth="800" maxWidth="800"
-                      style="-fx-background-color: white; 
-                             -fx-padding: 40; 
+                      style="-fx-background-color: white;
+                             -fx-padding: 40;
                              -fx-background-radius: 12;
                              -fx-border-color: #e5e5e5;
                              -fx-border-radius: 12;
                              -fx-border-width: 1;">
-                    
+
                     <Label text="Platforms"
-                           style="-fx-font-size: 20px; 
-                                  -fx-font-weight: 600; 
+                           style="-fx-font-size: 20px;
+                                  -fx-font-weight: 600;
                                   -fx-text-fill: #1d1d1f;"/>
 
                     <!-- Bluesky -->
                     <HBox spacing="20" alignment="CENTER_LEFT"
-                          style="-fx-background-color: #fafafa; 
-                                 -fx-padding: 20; 
+                          style="-fx-background-color: #fafafa;
+                                 -fx-padding: 20;
                                  -fx-background-radius: 8;">
                         <ImageView fitHeight="40" preserveRatio="true">
                             <image>
                                 <Image url="@../images/Bluesky_Logo.png"/>
                             </image>
                         </ImageView>
-                        <Label text="Bluesky" 
-                               style="-fx-font-size: 16px; 
+                        <Label text="Bluesky"
+                               style="-fx-font-size: 16px;
                                       -fx-font-weight: 500;
                                       -fx-text-fill: #1d1d1f;"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <Button fx:id="blueskyButton" text="Connect" onAction="#openBluesky"
-                                style="-fx-background-color: #007aff; 
+                                style="-fx-background-color: #007aff;
                                        -fx-text-fill: white;
-                                       -fx-background-radius: 6; 
-                                       -fx-font-weight: 500; 
+                                       -fx-background-radius: 6;
+                                       -fx-font-weight: 500;
                                        -fx-font-size: 14px;
                                        -fx-padding: 10 24;
                                        -fx-cursor: hand;">
@@ -82,24 +80,24 @@
 
                     <!-- Mastodon -->
                     <HBox spacing="20" alignment="CENTER_LEFT"
-                          style="-fx-background-color: #fafafa; 
-                                 -fx-padding: 20; 
+                          style="-fx-background-color: #fafafa;
+                                 -fx-padding: 20;
                                  -fx-background-radius: 8;">
                         <ImageView fitHeight="40" preserveRatio="true">
                             <image>
                                 <Image url="@../images/Mastodon_Logo.png"/>
                             </image>
                         </ImageView>
-                        <Label text="Mastodon" 
-                               style="-fx-font-size: 16px; 
+                        <Label text="Mastodon"
+                               style="-fx-font-size: 16px;
                                       -fx-font-weight: 500;
                                       -fx-text-fill: #1d1d1f;"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <Button fx:id="mastodonButton" text="Connect" onAction="#openMastodon"
-                                style="-fx-background-color: #007aff; 
+                                style="-fx-background-color: #007aff;
                                        -fx-text-fill: white;
-                                       -fx-background-radius: 6; 
-                                       -fx-font-weight: 500; 
+                                       -fx-background-radius: 6;
+                                       -fx-font-weight: 500;
                                        -fx-font-size: 14px;
                                        -fx-padding: 10 24;
                                        -fx-cursor: hand;">
@@ -110,26 +108,26 @@
 
                 <!-- Post Creation -->
                 <VBox alignment="CENTER" spacing="20" prefWidth="800" maxWidth="800"
-                      style="-fx-background-color: white; 
-                             -fx-padding: 40; 
+                      style="-fx-background-color: white;
+                             -fx-padding: 40;
                              -fx-background-radius: 12;
                              -fx-border-color: #e5e5e5;
                              -fx-border-radius: 12;
                              -fx-border-width: 1;">
-                    
+
                     <Label text="New Post"
-                           style="-fx-font-size: 20px; 
-                                  -fx-font-weight: 600; 
+                           style="-fx-font-size: 20px;
+                                  -fx-font-weight: 600;
                                   -fx-text-fill: #1d1d1f;"/>
-                    
+
                     <!-- Text Area -->
                     <VBox spacing="10">
-                        <TextArea fx:id="postContent" 
+                        <TextArea fx:id="postContent"
                                   promptText="What's happening?"
-                                  prefHeight="220" 
+                                  prefHeight="220"
                                   wrapText="true"
-                                  style="-fx-background-color: #fafafa; 
-                                         -fx-background-radius: 8; 
+                                  style="-fx-background-color: #fafafa;
+                                         -fx-background-radius: 8;
                                          -fx-border-radius: 8;
                                          -fx-border-color: #d1d1d6;
                                          -fx-border-width: 1;
@@ -137,14 +135,14 @@
                                          -fx-padding: 14;
                                          -fx-text-fill: #1d1d1f;
                                          -fx-prompt-text-fill: #86868b;"/>
-                        <Label text="0 / 280" 
+                        <Label fx:id="charCountLabel" text="0 / 280"
                                style="-fx-text-fill: #86868b; 
                                       -fx-font-size: 13px;"/>
                     </VBox>
 
                     <!-- Platform Selection -->
                     <HBox spacing="24" alignment="CENTER_LEFT">
-                        <Label text="Post to:" 
+                        <Label text="Post to:"
                                style="-fx-font-size: 15px; 
                                       -fx-text-fill: #64748b;"/>
                         <CheckBox fx:id="blueskyCheck" text="Bluesky"
@@ -174,12 +172,12 @@
 
     <!-- Simple Footer -->
     <bottom>
-        <HBox alignment="CENTER" 
+        <HBox alignment="CENTER"
               style="-fx-padding: 20; 
                      -fx-background-color: white;
                      -fx-border-color: #e5e5e5;
                      -fx-border-width: 1 0 0 0;">
-            <Label text="© 2025 BMC Crossposter" 
+            <Label text="© 2025 BMC Crossposter"
                    style="-fx-text-fill: #86868b; 
                           -fx-font-size: 12px;"/>
         </HBox>

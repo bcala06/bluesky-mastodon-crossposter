@@ -4,11 +4,12 @@ public class AuthSession {
     public final String codeVerifier;
     public String instanceUrl;
     public String issuer;
+    public String pdsEndpoint; // change for bluesky poster
     public String dpopNonce;
     public String accessToken;
     public String refreshToken;
     public String did;
-    
+
 
     public AuthSession(String codeVerifier) {
         this.codeVerifier = codeVerifier;

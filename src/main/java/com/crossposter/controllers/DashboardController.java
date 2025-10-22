@@ -8,6 +8,11 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Map;
 import java.util.Optional;
 
@@ -96,15 +101,22 @@ public class DashboardController {
 
         boolean allSuccess = true;
 
+        // Inside the handlePost() method...
+
         if (postToBluesky) {
             try {
                 AuthSession session = ServiceRegistry.getBlueskySession();
                 if (session == null || session.accessToken == null) {
-                    showAlert(Alert.AlertType.WARNING, "Bluesky not authenticated",
+                    showAlert(Alert.AlertType.WARNING, "Bluesky Not Authenticated",
                             "Please authenticate with Bluesky first.");
                     allSuccess = false;
                 } else {
                     String pdsOrigin = ServiceRegistry.getBlueskyPdsOrigin();
+
+                    // >>>>>>>>> ADD THIS LINE FOR DEBUGGING <<<<<<<<<<
+                    System.out.println("DEBUG: PDS Origin for createPost call is: " + pdsOrigin);
+                    // >>>>>>>>> END OF DEBUGGING LINE <<<<<<<<<<
+
                     if (pdsOrigin == null) {
                         showAlert(Alert.AlertType.WARNING, "Bluesky PDS Origin Missing",
                                 "Bluesky session lacks PDS origin. Please re-authenticate.");
@@ -118,27 +130,7 @@ public class DashboardController {
             } catch (Exception e) {
                 System.err.println("Error posting to Bluesky: " + e.getMessage());
                 e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR, "Error", "Failed to post to Bluesky: " + e.getMessage());
-                allSuccess = false;
-            }
-        }
-
-        if (postToMastodon) {
-            try {
-                AuthSession session = ServiceRegistry.getMastodonSession();
-                if (session == null || session.accessToken == null || session.instanceUrl == null) {
-                    showAlert(Alert.AlertType.WARNING, "Mastodon not authenticated",
-                            "Please authenticate with Mastodon first.");
-                    allSuccess = false;
-                } else {
-                    Map<String, Object> result = mastodonClient.postStatus(session, content);
-                    System.out.println("Mastodon post result: " + result);
-                    showAlert(Alert.AlertType.INFORMATION, "Success", "Posted to Mastodon successfully!");
-                }
-            } catch (Exception e) {
-                System.err.println("Error posting to Mastodon: " + e.getMessage());
-                e.printStackTrace();
-                showAlert(Alert.AlertType.ERROR, "Error", "Failed to post to Mastodon: " + e.getMessage());
+                showAlert(Alert.AlertType.ERROR, "Error Posting to Bluesky", e.getMessage());
                 allSuccess = false;
             }
         }
@@ -148,13 +140,42 @@ public class DashboardController {
         }
     }
 
+    // error handling update
     private void showAlert(Alert.AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.setContentText(message);
+
+        if (message.length() < 100) {
+            alert.setContentText(message);
+        } else {
+            alert.setContentText("An error occurred. See details for more information.");
+
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            pw.write(message);
+            String exceptionText = sw.toString();
+
+            TextArea textArea = new TextArea(exceptionText);
+            textArea.setEditable(false);
+            textArea.setWrapText(true);
+
+            textArea.setMaxWidth(Double.MAX_VALUE);
+            textArea.setMaxHeight(Double.MAX_VALUE);
+            GridPane.setVgrow(textArea, Priority.ALWAYS);
+            GridPane.setHgrow(textArea, Priority.ALWAYS);
+
+            GridPane expContent = new GridPane();
+            expContent.setMaxWidth(Double.MAX_VALUE);
+            expContent.add(new Label("The full error message is:"), 0, 0);
+            expContent.add(textArea, 0, 1);
+
+            alert.getDialogPane().setExpandableContent(expContent);
+        }
+
         alert.showAndWait();
     }
+
 
     @FXML
     public void openSettings(MouseEvent event) {

@@ -31,7 +31,7 @@ public class DashboardController {
     @FXML private CheckBox blueskyCheck;
     @FXML private CheckBox mastodonCheck;
     @FXML private Label charCountLabel;
-    @FXML private Label postButton;
+    @FXML private Button postButton;
 
     @FXML
      public void initialize() {
@@ -79,7 +79,6 @@ public class DashboardController {
     private void setupCharacterCountListener() {
         postContent.textProperty().addListener((observable, oldValue, newValue) -> {
             int currentLength = newValue.length();
-
           
             if (currentLength > MAX_CHARS) {
                 String truncated = newValue.substring(0, MAX_CHARS);
@@ -87,10 +86,9 @@ public class DashboardController {
                 currentLength = MAX_CHARS; 
             }
 
-           
             charCountLabel.setText(currentLength + " / " + MAX_CHARS);
 
-            
+
             if (currentLength == MAX_CHARS) {
                 charCountLabel.setStyle("-fx-text-fill: red; -fx-font-size: 13px;");
             } else {

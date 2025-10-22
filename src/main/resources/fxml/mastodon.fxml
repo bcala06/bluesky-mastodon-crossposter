@@ -55,7 +55,7 @@
                        style="-fx-font-size: 13px; -fx-text-fill: #86868b;"/>
 
                 <TextField fx:id="mastodonHandleField"
-                           promptText="user@instance.com or instance.com"
+                           promptText="user@mastodon.social or mastodon.social"
                            style="-fx-pref-width: 320;
                                   -fx-background-color: #fafafa; 
                                   -fx-background-radius: 8; 

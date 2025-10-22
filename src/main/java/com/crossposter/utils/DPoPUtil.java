@@ -10,11 +10,14 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
@@ -23,7 +26,6 @@ public final class DPoPUtil {
     private static ECKey publicJWK;
     private DPoPUtil() {}
 
-    // Generate a P-256 keypair once for the app/session
     public static synchronized void init() {
         if (privateECKey != null) return;
         try {
@@ -48,8 +50,9 @@ public final class DPoPUtil {
      * @param method HTTP verb (e.g. POST, GET)
      * @param url exact URL (e.g. https://bsky.social/oauth/par)
      * @param nonce optional nonce (if provided by server on 401)
+     * @param accessToken optional access token to bind the proof to (ath claim)
      */
-    public static String buildDPoP(String method, String url, String nonce) {
+    public static String buildDPoP(String method, String url, String nonce, String accessToken) { // change for bluesky poster
         try {
             if (privateECKey == null) init();
 
@@ -66,6 +69,14 @@ public final class DPoPUtil {
 
             if (nonce != null && !nonce.isEmpty()) {
                 claims.claim("nonce", nonce);
+            }
+
+            // change for bluesky poster: Add the 'ath' claim if an access token is provided
+            if (accessToken != null && !accessToken.isEmpty()) {
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                byte[] digest = md.digest(accessToken.getBytes(StandardCharsets.US_ASCII));
+                String ath = Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+                claims.claim("ath", ath);
             }
 
             SignedJWT jwt = new SignedJWT(header, claims.build());

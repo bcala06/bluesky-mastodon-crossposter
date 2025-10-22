@@ -4,14 +4,14 @@ import com.crossposter.services.AuthSession;
 import com.crossposter.services.BlueskyClient;
 import com.crossposter.services.MastodonClient;
 import com.crossposter.services.ServiceRegistry;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
+import javafx.beans.binding.Bindings;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -30,39 +30,32 @@ public class DashboardController {
     @FXML private TextArea postContent;
     @FXML private CheckBox blueskyCheck;
     @FXML private CheckBox mastodonCheck;
-    @FXML private Label charCountLabel; // The new label from the FXML file
+    @FXML private Label charCountLabel;
+    @FXML private Label postButton;
 
     @FXML
-    public void initialize() {
+     public void initialize() {
         updateButtons();
-        setupCharacterCountListener(); // Set up the new character counter
+        setupCharacterCountListener(); 
+
+        final boolean blueskyConnected = ServiceRegistry.getBlueskySession() != null;
+        final boolean mastodonConnected = ServiceRegistry.getMastodonSession() != null;
+
+        if (blueskyCheck != null) blueskyCheck.setDisable(!blueskyConnected);
+        if (mastodonCheck != null) mastodonCheck.setDisable(!mastodonConnected);
+
+        if (postButton != null) {
+            postButton.disableProperty().bind(Bindings.createBooleanBinding(
+                () -> {
+                    boolean b = (blueskyConnected && blueskyCheck.isSelected());
+                    boolean m = (mastodonConnected && mastodonCheck.isSelected());
+                    return !(b || m); // disable when neither valid target is selected
+               },
+                blueskyCheck.selectedProperty(),
+                mastodonCheck.selectedProperty()
+            ));
+        }
     }
-
-    // New method to handle character counting and limit
-    private void setupCharacterCountListener() {
-        postContent.textProperty().addListener((observable, oldValue, newValue) -> {
-            int currentLength = newValue.length();
-
-            // Enforce the character limit
-            if (currentLength > MAX_CHARS) {
-                String truncated = newValue.substring(0, MAX_CHARS);
-                postContent.setText(truncated);
-                currentLength = MAX_CHARS; // Update length after truncation
-            }
-
-            // Update the label text
-            charCountLabel.setText(currentLength + " / " + MAX_CHARS);
-
-            // Change the label color to red if the limit is reached
-            if (currentLength == MAX_CHARS) {
-                charCountLabel.setStyle("-fx-text-fill: red; -fx-font-size: 13px;");
-            } else {
-                // Reset to the default style from the FXML
-                charCountLabel.setStyle("-fx-text-fill: #86868b; -fx-font-size: 13px;");
-            }
-        });
-    }
-
 
     private void updateButtons() {
         if (ServiceRegistry.getBlueskySession() != null) {
@@ -80,6 +73,30 @@ public class DashboardController {
             mastodonButton.setText("Connect");
             mastodonButton.setStyle("-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;");
         }
+    }
+ 
+
+    private void setupCharacterCountListener() {
+        postContent.textProperty().addListener((observable, oldValue, newValue) -> {
+            int currentLength = newValue.length();
+
+          
+            if (currentLength > MAX_CHARS) {
+                String truncated = newValue.substring(0, MAX_CHARS);
+                postContent.setText(truncated);
+                currentLength = MAX_CHARS; 
+            }
+
+           
+            charCountLabel.setText(currentLength + " / " + MAX_CHARS);
+
+            
+            if (currentLength == MAX_CHARS) {
+                charCountLabel.setStyle("-fx-text-fill: red; -fx-font-size: 13px;");
+            } else {
+                charCountLabel.setStyle("-fx-text-fill: #86868b; -fx-font-size: 13px;");
+            }
+        });
     }
 
     @FXML

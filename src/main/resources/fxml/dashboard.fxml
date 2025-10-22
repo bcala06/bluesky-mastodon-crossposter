@@ -154,7 +154,7 @@
                     </HBox>
 
                     <!-- Submit Button -->
-                    <Button text="Post" onAction="#handlePost"
+                    <Button fx:id="postButton" text="Post" onAction="#handlePost"
                             style="-fx-background-color: #007aff; 
                                    -fx-text-fill: white;
                                    -fx-font-size: 16px; 

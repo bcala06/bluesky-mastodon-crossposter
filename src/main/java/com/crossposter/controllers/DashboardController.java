@@ -4,6 +4,8 @@ import com.crossposter.services.AuthSession;
 import com.crossposter.services.BlueskyClient;
 import com.crossposter.services.MastodonClient;
 import com.crossposter.services.ServiceRegistry;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -18,6 +20,8 @@ import java.util.Optional;
 
 public class DashboardController {
 
+    private static final int MAX_CHARS = 280;
+
     private final BlueskyClient blueskyClient = ServiceRegistry.getBlueskyClient();
     private final MastodonClient mastodonClient = ServiceRegistry.getMastodonClient();
 
@@ -26,11 +30,39 @@ public class DashboardController {
     @FXML private TextArea postContent;
     @FXML private CheckBox blueskyCheck;
     @FXML private CheckBox mastodonCheck;
+    @FXML private Label charCountLabel; // The new label from the FXML file
 
     @FXML
     public void initialize() {
         updateButtons();
+        setupCharacterCountListener(); // Set up the new character counter
     }
+
+    // New method to handle character counting and limit
+    private void setupCharacterCountListener() {
+        postContent.textProperty().addListener((observable, oldValue, newValue) -> {
+            int currentLength = newValue.length();
+
+            // Enforce the character limit
+            if (currentLength > MAX_CHARS) {
+                String truncated = newValue.substring(0, MAX_CHARS);
+                postContent.setText(truncated);
+                currentLength = MAX_CHARS; // Update length after truncation
+            }
+
+            // Update the label text
+            charCountLabel.setText(currentLength + " / " + MAX_CHARS);
+
+            // Change the label color to red if the limit is reached
+            if (currentLength == MAX_CHARS) {
+                charCountLabel.setStyle("-fx-text-fill: red; -fx-font-size: 13px;");
+            } else {
+                // Reset to the default style from the FXML
+                charCountLabel.setStyle("-fx-text-fill: #86868b; -fx-font-size: 13px;");
+            }
+        });
+    }
+
 
     private void updateButtons() {
         if (ServiceRegistry.getBlueskySession() != null) {
@@ -101,8 +133,6 @@ public class DashboardController {
 
         boolean allSuccess = true;
 
-        // Inside the handlePost() method...
-
         if (postToBluesky) {
             try {
                 AuthSession session = ServiceRegistry.getBlueskySession();
@@ -112,11 +142,6 @@ public class DashboardController {
                     allSuccess = false;
                 } else {
                     String pdsOrigin = ServiceRegistry.getBlueskyPdsOrigin();
-
-                    // >>>>>>>>> ADD THIS LINE FOR DEBUGGING <<<<<<<<<<
-                    System.out.println("DEBUG: PDS Origin for createPost call is: " + pdsOrigin);
-                    // >>>>>>>>> END OF DEBUGGING LINE <<<<<<<<<<
-
                     if (pdsOrigin == null) {
                         showAlert(Alert.AlertType.WARNING, "Bluesky PDS Origin Missing",
                                 "Bluesky session lacks PDS origin. Please re-authenticate.");
@@ -135,12 +160,31 @@ public class DashboardController {
             }
         }
 
+        if (postToMastodon) {
+            try {
+                AuthSession session = ServiceRegistry.getMastodonSession();
+                if (session == null || session.accessToken == null || session.instanceUrl == null) {
+                    showAlert(Alert.AlertType.WARNING, "Mastodon Not Authenticated",
+                            "Please authenticate with Mastodon first.");
+                    allSuccess = false;
+                } else {
+                    Map<String, Object> result = mastodonClient.postStatus(session, content);
+                    System.out.println("Mastodon post result: " + result);
+                    showAlert(Alert.AlertType.INFORMATION, "Success", "Posted to Mastodon successfully!");
+                }
+            } catch (Exception e) {
+                System.err.println("Error posting to Mastodon: " + e.getMessage());
+                e.printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Error Posting to Mastodon", e.getMessage());
+                allSuccess = false;
+            }
+        }
+
         if (allSuccess && (postToBluesky || postToMastodon)) {
             postContent.clear();
         }
     }
 
-    // error handling update
     private void showAlert(Alert.AlertType type, String title, String message) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

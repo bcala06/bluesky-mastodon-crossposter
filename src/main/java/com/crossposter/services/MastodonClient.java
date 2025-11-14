@@ -258,6 +258,18 @@ public class MastodonClient {
         return MAPPER.readValue(postResponse.body(), Map.class);
     }
 
+    public Map<String, Object> verifyCredentials(AuthSession session) throws Exception {
+    String url = session.instanceUrl + "/api/v1/accounts/verify_credentials";
+
+    Map<String, String> headers = Map.of(
+            "Authorization", "Bearer " + session.accessToken
+    );
+
+    String body = HttpUtil.get(url, headers);
+    return MAPPER.readValue(body, Map.class);
+    }
+
+
     private static String urlenc(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }

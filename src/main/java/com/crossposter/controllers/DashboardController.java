@@ -12,7 +12,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Map;
@@ -32,11 +31,14 @@ public class DashboardController {
     @FXML private CheckBox mastodonCheck;
     @FXML private Label charCountLabel;
     @FXML private Button postButton;
+    @FXML private Label blueskyUserLabel;   
+    @FXML private Label mastodonUserLabel;  
 
     @FXML
-     public void initialize() {
+    public void initialize() {
         updateButtons();
-        setupCharacterCountListener(); 
+        setupCharacterCountListener();
+        updateConnectionLabels(); 
 
         final boolean blueskyConnected = ServiceRegistry.getBlueskySession() != null;
         final boolean mastodonConnected = ServiceRegistry.getMastodonSession() != null;
@@ -49,8 +51,8 @@ public class DashboardController {
                 () -> {
                     boolean b = (blueskyConnected && blueskyCheck.isSelected());
                     boolean m = (mastodonConnected && mastodonCheck.isSelected());
-                    return !(b || m); // disable when neither valid target is selected
-               },
+                    return !(b || m);
+                },
                 blueskyCheck.selectedProperty(),
                 mastodonCheck.selectedProperty()
             ));
@@ -74,7 +76,48 @@ public class DashboardController {
             mastodonButton.setStyle("-fx-background-color: #556CFF; -fx-text-fill: white; -fx-background-radius: 5;");
         }
     }
- 
+
+    private void updateConnectionLabels() {
+        // Bluesky
+        var bs = ServiceRegistry.getBlueskySession();
+        if (blueskyUserLabel != null) {
+            if (bs != null) {
+                try {
+                    Map<String, Object> profile = blueskyClient.getProfile(bs);
+                    String handle = (String) profile.get("handle"); 
+                    blueskyUserLabel.setText("@" + handle);
+                } catch (Exception e) {
+                    blueskyUserLabel.setText("Connected");
+                }
+            } else {
+                blueskyUserLabel.setText("Not connected");
+            }
+        }
+        if (blueskyCheck != null) {
+            blueskyCheck.setDisable(bs == null);
+            if (bs == null) blueskyCheck.setSelected(false);
+        }
+
+        // Mastodon
+        var ms = ServiceRegistry.getMastodonSession();
+        if (mastodonUserLabel != null) {
+            if (ms != null) {
+                try {
+                    Map<String, Object> acct = mastodonClient.verifyCredentials(ms);
+                    String username = (String) acct.get("acct");
+                    mastodonUserLabel.setText("@" + username);
+                } catch (Exception e) {
+                    mastodonUserLabel.setText("Connected");
+                }
+            } else {
+                mastodonUserLabel.setText("Not connected");
+            }
+        }
+        if (mastodonCheck != null) {
+            mastodonCheck.setDisable(ms == null);
+            if (ms == null) mastodonCheck.setSelected(false);
+        }
+    }
 
     private void setupCharacterCountListener() {
         postContent.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -87,7 +130,6 @@ public class DashboardController {
             }
 
             charCountLabel.setText(currentLength + " / " + MAX_CHARS);
-
 
             if (currentLength == MAX_CHARS) {
                 charCountLabel.setStyle("-fx-text-fill: red; -fx-font-size: 13px;");
@@ -105,6 +147,7 @@ public class DashboardController {
                 ServiceRegistry.setBlueskyPdsOrigin(null);
                 System.out.println("[Dashboard] Bluesky disconnected.");
                 updateButtons();
+                updateConnectionLabels();
             }
         } else {
             System.out.println("[Dashboard] Bluesky Connect clicked");
@@ -119,6 +162,7 @@ public class DashboardController {
                 ServiceRegistry.setMastodonSession(null);
                 System.out.println("[Dashboard] Mastodon disconnected.");
                 updateButtons();
+                updateConnectionLabels();
             }
         } else {
             System.out.println("[Dashboard] Mastodon Connect clicked");
@@ -234,7 +278,6 @@ public class DashboardController {
 
         alert.showAndWait();
     }
-
 
     @FXML
     public void openSettings(MouseEvent event) {

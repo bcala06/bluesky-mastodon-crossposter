@@ -222,6 +222,37 @@ public class BlueskyClient {
         }
     }
 
+    public Map<String, Object> getProfile(AuthSession session) throws Exception {
+    String pdsHttp = session.pdsEndpoint.startsWith("did:web:")
+            ? "https://" + session.pdsEndpoint.substring(8)
+            : session.pdsEndpoint;
+
+    String url = pdsHttp + "/xrpc/app.bsky.actor.getProfile?actor=" + session.did;
+
+    Map<String, String> headers = new HashMap<>();
+    headers.put("Authorization", "DPoP " + session.accessToken);
+
+    String dpop = DPoPUtil.buildDPoP("GET", url, session.dpopNonce, session.accessToken);
+    headers.put("DPoP", dpop);
+
+    var res = HttpUtil.getWithResponse(url, headers);
+    String newNonce = HttpUtil.extractDpopNonce(res);
+    if (newNonce != null) session.dpopNonce = newNonce;
+
+    if (res.statusCode() != 200)
+        throw new IOException("getProfile failed: " + res.statusCode() + " " + res.body());
+
+    Map<String, Object> outer = MAPPER.readValue(res.body(), Map.class);
+
+    Map<String, Object> profile = (Map<String, Object>) outer.get("data");
+    if (profile == null)
+        throw new IOException("Profile data missing in response: " + res.body());
+
+    return profile;
+}
+
+
+
     private Map<String, Object> attemptToCreatePost(AuthSession session, String pdsOrigin, String text) throws Exception {
         if (session.did == null || session.did.isBlank()) {
             throw new IllegalStateException("AuthSession has no DID. Make sure to set it after login.");

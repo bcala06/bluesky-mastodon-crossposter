@@ -83,8 +83,7 @@ public class DashboardController {
         if (blueskyUserLabel != null) {
             if (bs != null) {
                 try {
-                    Map<String, Object> profile = blueskyClient.getProfile(bs);
-                    String handle = (String) profile.get("handle"); 
+                    String handle = bs.handle(); 
                     blueskyUserLabel.setText("@" + handle);
                 } catch (Exception e) {
                     blueskyUserLabel.setText("Connected");
@@ -103,9 +102,8 @@ public class DashboardController {
         if (mastodonUserLabel != null) {
             if (ms != null) {
                 try {
-                    Map<String, Object> acct = mastodonClient.verifyCredentials(ms);
-                    String username = (String) acct.get("acct");
-                    mastodonUserLabel.setText("@" + username);
+                    String handle = ms.handle();
+                    mastodonUserLabel.setText("@" + handle);
                 } catch (Exception e) {
                     mastodonUserLabel.setText("Connected");
                 }

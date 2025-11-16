@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import java.net.URLEncoder;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -198,11 +199,12 @@ public class MastodonClient {
             if (!"Bearer".equalsIgnoreCase(tokenType)) {
                 System.out.println("Warning: Expected token_type 'Bearer', got '" + tokenType + "'");
             }
-
-            // Supply session tokens
+            
+            // Supply session tokens and handle
             session.accessToken = accessToken;
             session.refreshToken = refreshToken;
             session.instanceUrl = instanceUrl;
+            session.handle = getHandle(session);
 
             return session;
 
@@ -258,15 +260,25 @@ public class MastodonClient {
         return MAPPER.readValue(postResponse.body(), Map.class);
     }
 
-    public Map<String, Object> verifyCredentials(AuthSession session) throws Exception {
-    String url = session.instanceUrl + "/api/v1/accounts/verify_credentials";
+    public String getHandle(AuthSession session) throws Exception {
+        if (session.accessToken == null) {
+            throw new IllegalStateException("Warning: Session access token not found.");
+        }
+        if (session.instanceUrl == null) {
+            throw new IllegalStateException("Warning: Session instance URL not found.");
+        }
 
-    Map<String, String> headers = Map.of(
-            "Authorization", "Bearer " + session.accessToken
-    );
+        String handleEndpoint = session.instanceUrl + "/api/v1/accounts/verify_credentials";
+        Map<String, String> headers = Map.of("Authorization", "Bearer " + session.accessToken);
+        HttpResponse<String> getResponse = HttpUtil.getWithResponse(handleEndpoint, headers);
 
-    String body = HttpUtil.get(url, headers);
-    return MAPPER.readValue(body, Map.class);
+        if (getResponse.statusCode() != 200)
+            throw new IOException("getProfile failed: " + getResponse.statusCode() + " " + getResponse.body());
+
+        Map<String, Object> data = MAPPER.readValue(getResponse.body(), Map.class);
+        String handle = (String) data.get("acct");
+        
+        return handle;
     }
 
 

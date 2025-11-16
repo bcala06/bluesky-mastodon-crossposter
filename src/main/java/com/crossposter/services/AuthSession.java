@@ -9,6 +9,7 @@ public class AuthSession {
     public String accessToken;
     public String refreshToken;
     public String did;
+    public String handle;
 
 
     public AuthSession(String codeVerifier) {
@@ -25,5 +26,9 @@ public class AuthSession {
 
     public String did() {
         return did;
+    }
+
+    public String handle() {
+        return handle;
     }
 }

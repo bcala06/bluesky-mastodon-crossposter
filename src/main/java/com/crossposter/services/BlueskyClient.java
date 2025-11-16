@@ -26,7 +26,6 @@ public class BlueskyClient {
 
     private static final String CLIENT_ID = "https://bcala06.github.io/bluesky-mastodon-crossposter/client-metadata.json";
     private static final String REDIRECT_URI = "http://127.0.0.1:8080/callback";
-    // change for bluesky poster: Added the specific scope required to create a post.
     private static final String SCOPE = "atproto repo:app.bsky.feed.post?action=create";
 
     private record TokenClaims(String did, String pdsEndpoint) {}
@@ -56,7 +55,7 @@ public class BlueskyClient {
 
         String dpop1 = DPoPUtil.buildDPoP("POST", parEndpoint, session.dpopNonce, null);
         headers.put("DPoP", dpop1);
-        var parResponse = HttpUtil.postFormWithResponse(parEndpoint, headers, parBody);
+        HttpResponse<String> parResponse = HttpUtil.postFormWithResponse(parEndpoint, headers, parBody);
 
         int statusCode = parResponse.statusCode();
         boolean needsRetry = (statusCode == 401) || (statusCode == 400 && parResponse.body().contains("\"use_dpop_nonce\""));
@@ -96,6 +95,7 @@ public class BlueskyClient {
             callbackServer.start();
             waitForLocalServer("127.0.0.1", 8080, 2000);
 
+            // Open system browser. If Desktop fails, print URL so caller can open manually.
             try {
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
                     Desktop.getDesktop().browse(URI.create(authUrl));
@@ -107,6 +107,7 @@ public class BlueskyClient {
                 System.out.println("Open this URL in your browser: " + authUrl);
             }
 
+            // Wait for callback
             LocalCallbackServer.CallbackResult cb = callbackServer.awaitAuthorizationCode(180);
             if (cb == null) throw new IOException("Timeout waiting for callback");
             if (!state.equals(cb.state())) throw new IOException("State mismatch");
@@ -117,6 +118,7 @@ public class BlueskyClient {
             }
             session.issuer = cb.iss();
 
+            // Token exchange
             String tokenBody = String.format(
                     "grant_type=authorization_code&code=%s&redirect_uri=%s&code_verifier=%s&client_id=%s",
                     urlenc(code), urlenc(REDIRECT_URI), urlenc(codeVerifier), urlenc(CLIENT_ID)
@@ -127,7 +129,7 @@ public class BlueskyClient {
 
             String tokenDpop = DPoPUtil.buildDPoP("POST", tokenEndpoint, session.dpopNonce, null);
             headers.put("DPoP", tokenDpop);
-            var tokenResponse = HttpUtil.postFormWithResponse(tokenEndpoint, headers, tokenBody);
+            HttpResponse<String> tokenResponse = HttpUtil.postFormWithResponse(tokenEndpoint, headers, tokenBody);
 
             newNonce = HttpUtil.extractDpopNonce(tokenResponse);
             if (newNonce != null) {
@@ -139,12 +141,25 @@ public class BlueskyClient {
             }
 
             Map<String, Object> tokenJson = MAPPER.readValue(tokenResponse.body(), Map.class);
-            session.accessToken = (String) tokenJson.get("access_token");
-            session.refreshToken = (String) tokenJson.get("refresh_token");
+            String accessToken = (String) tokenJson.get("access_token");
+            String refreshToken = (String) tokenJson.get("refresh_token");
 
-            TokenClaims claims = parseTokenClaims(session.accessToken);
-            session.did = claims.did();
-            session.pdsEndpoint = claims.pdsEndpoint();
+            // Parse token claims
+            TokenClaims claims = parseTokenClaims(accessToken);
+            String did = claims.did();
+            String pdsEndpoint = claims.pdsEndpoint();
+
+            // Check for errors
+            if (accessToken == null) {
+                throw new IOException("Token exchange response missing access_token: " + tokenResponse.body());
+            }
+
+            // Supply session tokens and handle
+            session.accessToken = accessToken;
+            session.refreshToken = refreshToken;
+            session.did = did;
+            session.pdsEndpoint = pdsEndpoint;
+            session.handle = getHandle(session);
 
             return session;
         } finally {
@@ -175,7 +190,7 @@ public class BlueskyClient {
 
         String dpop = DPoPUtil.buildDPoP("POST", tokenEndpoint, session.dpopNonce, null);
         headers.put("DPoP", dpop);
-        var response = HttpUtil.postFormWithResponse(tokenEndpoint, headers, refreshBody);
+        HttpResponse<String> response = HttpUtil.postFormWithResponse(tokenEndpoint, headers, refreshBody);
 
         boolean needsRetry = (response.statusCode() == 401) || (response.statusCode() == 400 && response.body().contains("use_dpop_nonce"));
         if (needsRetry) {
@@ -222,36 +237,26 @@ public class BlueskyClient {
         }
     }
 
-    public Map<String, Object> getProfile(AuthSession session) throws Exception {
-    String pdsHttp = session.pdsEndpoint.startsWith("did:web:")
-            ? "https://" + session.pdsEndpoint.substring(8)
-            : session.pdsEndpoint;
+    public String getHandle(AuthSession session) throws Exception {
+        if (session.accessToken == null) {
+            throw new IllegalStateException("Warning: Session access token not found.");
+        }
+        if (session.did == null || session.did.isBlank()) {
+            throw new IllegalStateException("Warning: Session DID not found.");
+        }
 
-    String url = pdsHttp + "/xrpc/app.bsky.actor.getProfile?actor=" + session.did;
+        String handleEndpoint = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + session.did;
+        Map<String, String> headers = Map.of("Authorization", "Bearer " + session.accessToken);
+        HttpResponse<String> getResponse = HttpUtil.getWithResponse(handleEndpoint, headers);
 
-    Map<String, String> headers = new HashMap<>();
-    headers.put("Authorization", "DPoP " + session.accessToken);
+        if (getResponse.statusCode() != 200)
+            throw new IOException("getProfile failed: " + getResponse.statusCode() + " " + getResponse.body());
 
-    String dpop = DPoPUtil.buildDPoP("GET", url, session.dpopNonce, session.accessToken);
-    headers.put("DPoP", dpop);
+        Map<String, Object> outer = MAPPER.readValue(getResponse.body(), Map.class);
+        String handle = (String) outer.get("handle");
 
-    var res = HttpUtil.getWithResponse(url, headers);
-    String newNonce = HttpUtil.extractDpopNonce(res);
-    if (newNonce != null) session.dpopNonce = newNonce;
-
-    if (res.statusCode() != 200)
-        throw new IOException("getProfile failed: " + res.statusCode() + " " + res.body());
-
-    Map<String, Object> outer = MAPPER.readValue(res.body(), Map.class);
-
-    Map<String, Object> profile = (Map<String, Object>) outer.get("data");
-    if (profile == null)
-        throw new IOException("Profile data missing in response: " + res.body());
-
-    return profile;
-}
-
-
+        return handle;
+    }
 
     private Map<String, Object> attemptToCreatePost(AuthSession session, String pdsOrigin, String text) throws Exception {
         if (session.did == null || session.did.isBlank()) {
@@ -280,7 +285,7 @@ public class BlueskyClient {
 
         String dpop = DPoPUtil.buildDPoP("POST", url, session.dpopNonce, session.accessToken);
         headers.put("DPoP", dpop);
-        var postResponse = HttpUtil.postFormWithResponse(url, headers, jsonBody);
+        HttpResponse<String> postResponse = HttpUtil.postFormWithResponse(url, headers, jsonBody);
 
         boolean needsRetry = (postResponse.statusCode() == 401) || (postResponse.statusCode() == 400 && postResponse.body().contains("use_dpop_nonce"));
         if (needsRetry) {
